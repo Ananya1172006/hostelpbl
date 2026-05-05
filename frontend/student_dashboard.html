@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard | My Hostel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-outer: #d0c2d0;
+      --bg-inner: #fdfaf8;
+      --sidebar-bg: #f4eae7;
+      --card-white: #ffffff;
+      --card-light: #e5dbe5;
+      --card-dark: #8c768c;
+      --text-main: #332633;
+      --text-muted: #726272;
+      --accent-pink: #ed738a;
+      --accent-teal: #4dbfb2;
+      --accent-yellow: #f1b74a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-outer); overflow: hidden; }
+
+    .app-container {
+      width: 95vw; height: 94vh;
+      background: var(--bg-inner);
+      border-radius: 40px;
+      display: flex;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+    }
+
+    /* Sidebar */
+    .sidebar { width: 260px; background: var(--sidebar-bg); padding: 40px 20px 30px; display: flex; flex-direction: column; }
+    .brand { margin-bottom: 40px; display: flex; align-items: center; gap: 10px; padding-left: 20px; }
+    .brand i { color: var(--card-dark); font-size: 24px; }
+    .brand span { font-size: 24px; font-weight: 700; color: var(--card-dark); }
+    .user-profile-side { text-align: center; margin-bottom: 40px; }
+    .user-profile-side .avatar { width: 70px; height: 70px; border-radius: 50%; background: var(--card-dark); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; }
+    .user-profile-side h3 { font-size: 16px; color: var(--text-main); font-weight: 600; }
+    .user-profile-side p { font-size: 12px; color: var(--text-muted); }
+
+    .nav a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; margin-bottom: 5px; border-radius: 15px; text-decoration: none; color: var(--text-main); font-size: 14px; font-weight: 500; transition: .3s; }
+    .nav a:hover { background: rgba(140, 118, 140, 0.1); }
+    .nav a.active { background: var(--card-white); box-shadow: 0 4px 10px rgba(0,0,0,0.02); color: var(--card-dark); }
+    .logout { margin-top: auto; border-top: 1px solid rgba(140, 118, 140, 0.1); padding-top: 15px; }
+
+    /* Main Content */
+    .main { flex: 1; padding: 40px 50px; overflow-y: auto; position: relative; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .header h1 { font-size: 28px; color: var(--text-main); font-weight: 700; }
+    .top-actions { display: flex; align-items: center; gap: 20px; }
+
+    /* Cards */
+    .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+    .card { background: var(--card-light); border-radius: 25px; padding: 25px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
+    .card-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: var(--text-main); }
+    .notice-item { background: var(--card-white); border-radius: 15px; padding: 15px; display: flex; gap: 15px; margin-bottom: 10px; }
+    .notice-icon { width: 40px; height: 40px; background: var(--sidebar-bg); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--card-dark); }
+    .notice-info h4 { font-size: 14px; color: var(--text-main); }
+    .notice-info p { font-size: 12px; color: var(--text-muted); }
+
+    /* Right Stats */
+    .stat-box { background: var(--card-white); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; flex: 1; }
+    .stat-box h3 { font-size: 13px; color: var(--text-muted); margin-bottom: 15px; font-weight: 600; text-transform: uppercase; }
+
+    /* Circular Chart */
+    .pie { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; position: relative; }
+    .pie::before { content: ""; position: absolute; inset: 10px; background: white; border-radius: 50%; }
+    .pie span { position: relative; z-index: 10; color: var(--text-main); }
+    .pie-pink { background: conic-gradient(var(--accent-pink) 75%, rgba(0,0,0,0.05) 0); }
+    .pie-teal { background: conic-gradient(var(--accent-teal) 100%, transparent 0); }
+    .pie-yellow { background: conic-gradient(var(--accent-yellow) 20%, rgba(0,0,0,0.05) 0); }
+    .pie-red { background: conic-gradient(var(--accent-pink) 100%, transparent 0); }
+    .pie-green { background: conic-gradient(var(--accent-teal) 100%, transparent 0); }
+
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 22px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--accent-teal); }
+    input:checked + .slider:before { transform: translateX(22px); }
+
+    /* Tables */
+    .table-card { background: var(--card-white); border-radius: 25px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.02); }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 15px; text-align: left; font-size: 14px; }
+    th { color: var(--text-muted); font-weight: 600; }
+    tr { border-bottom: 1px solid rgba(0,0,0,0.05); }
+
+    .btn { background: var(--card-dark); color: white; padding: 10px 20px; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: .3s; }
+    .btn:hover { opacity: .9; }
+
+    /* Modals */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2000; align-items: center; justify-content: center; }
+    .modal-content { background: var(--card-white); padding: 40px; border-radius: 24px; width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+    .modal-content h2 { color: var(--card-dark); margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="brand"><i class="fas fa-hotel"></i><span>myhostel</span></div>
+    <div class="user-profile-side">
+      <div class="avatar"><i class="fas fa-user"></i></div>
+      <h3 id="studentNameDisplay">Loading...</h3>
+      <p>Student</p>
+    </div>
+    <div class="nav">
+      <a href="#" onclick="switchTab('dashboard')" id="nav-dashboard" class="active"><i class="fas fa-th-large"></i> Dashboard</a>
+      <a href="#" onclick="switchTab('fees')" id="nav-fees"><i class="fas fa-wallet"></i> My Fees</a>
+      <a href="#" onclick="switchTab('complaints')" id="nav-complaints"><i class="fas fa-comment-dots"></i> Complaints</a>
+      <a href="#" onclick="switchTab('leaves')" id="nav-leaves"><i class="fas fa-envelope-open-text"></i> Leave Requests</a>
+    </div>
+    <div class="logout"><a href="index.html" class="nav" style="color:var(--text-muted);"><i class="fas fa-sign-out-alt"></i> Log out</a></div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <h1 id="greetingText">HELLO, STUDENT!</h1>
+      <div class="top-actions"></div>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-content">
+      <div class="dashboard-grid">
+        <div class="left-col">
+          <div class="row-cards">
+            <div class="card">
+              <div class="card-title">Latest Notices</div>
+              <div id="noticesContainer"><div class="notice-item"><div class="notice-info"><p>Loading notices...</p></div></div></div>
+            </div>
+            <div class="card">
+              <div class="card-title">My Room Information</div>
+              <div class="notice-item" style="background:var(--card-white);"><div class="notice-icon"><i class="fas fa-bed"></i></div><div class="notice-info"><h4>Room Assigned</h4><p id="roomDisplay">--</p></div></div>
+              <div class="notice-item" style="background:var(--card-white);"><div class="notice-icon"><i class="fas fa-bullhorn"></i></div><div class="notice-info"><h4>New Notices</h4><p id="noticeCountDisplay">--</p></div></div>
+            </div>
+          </div>
+          <div class="card" style="flex:1;">
+            <div class="card-title">Hostel Schedule & Meals</div>
+            <div style="background:rgba(255,255,255,0.4); border-radius:15px; padding:20px; display:flex; justify-content:space-between;">
+              <div style="background:var(--card-white); padding:15px; border-radius:15px; width:45%; text-align:center;">
+                <h5>May 2026</h5>
+                <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:5px; font-size:12px; margin-top:10px;">
+                  <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                  <span style="color:var(--text-muted)">1</span><span style="color:var(--text-muted)">2</span><span>3</span><span>4</span><span>5</span><span style="background:var(--card-dark); color:white; border-radius:50%">6</span><span>7</span>
+                </div>
+              </div>
+              <div style="width:50%; display:flex; flex-direction:column; gap:10px;">
+                <div style="background:var(--card-white); padding:10px; border-radius:10px; font-size:12px;"><strong>08:00 AM</strong> Breakfast</div>
+                <div style="background:var(--card-white); padding:10px; border-radius:10px; font-size:12px;"><strong>01:00 PM</strong> Lunch</div>
+                <div style="background:var(--card-white); padding:10px; border-radius:10px; font-size:12px;"><strong>08:30 PM</strong> Dinner</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="right-col">
+          <div class="stat-box"><h3>Attendance</h3><div class="pie pie-pink"><span>75%</span></div></div>
+          <div class="stat-box"><h3>Fees Status</h3><div class="pie pie-teal"><span id="dashboardFeeCheck">N/A</span></div></div>
+          <div class="stat-box"><h3>Active Complaints</h3><div class="pie pie-yellow"><span id="complaintDisplay">0</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fees Tab -->
+    <div id="tab-fees" class="tab-content" style="display:none;">
+      <div class="table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+          <h2 style="color:var(--text-main);">My Fee Details</h2>
+          <div style="display:flex; align-items:center; gap:10px; background:var(--sidebar-bg); padding:8px 15px; border-radius:15px;">
+            <span style="font-size:12px; font-weight:600; color:var(--text-muted);">Toggle Status:</span>
+            <label class="switch"><input type="checkbox" id="statusToggle" onchange="toggleFeeStatus()"><span class="slider"></span></label>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:30px; margin-bottom: 30px; background:var(--card-light); padding:20px; border-radius:15px;">
+           <div id="feeStatusCircle" class="pie pie-green" style="width: 70px; height: 70px; font-size:16px;"><span>$</span></div>
+           <div><h3 style="color:var(--text-main);">Current Fee Status</h3><p id="feeDisplay" style="font-weight:700; font-size:24px; color:var(--card-dark);">--</p></div>
+           <button class="btn" style="margin-left:auto;" onclick="document.getElementById('receiptModal').style.display='flex'">View Digital Receipt</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complaints Tab -->
+    <div id="tab-complaints" class="tab-content" style="display:none;">
+      <div class="table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h2 style="color:var(--text-main);">My Complaints</h2>
+          <button class="btn" style="background:var(--accent-teal);" onclick="document.getElementById('fileComplaintModal').style.display='flex'">+ File Complaint</button>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Category</th><th>Subject</th><th>Status</th></tr></thead>
+          <tbody id="myComplaintsTableBody"><tr><td colspan="4">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Leaves Tab -->
+    <div id="tab-leaves" class="tab-content" style="display:none;">
+      <div class="table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h2 style="color:var(--text-main);">Leave Requests</h2>
+          <button class="btn" style="background:var(--accent-teal);" onclick="document.getElementById('applyLeaveModal').style.display='flex'">+ Apply Leave</button>
+        </div>
+        <table>
+          <thead><tr><th>Start Date</th><th>End Date</th><th>Reason</th><th>Status</th></tr></thead>
+          <tbody id="myLeavesTableBody"><tr><td colspan="4">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div id="fileComplaintModal" class="modal">
+    <div class="modal-content">
+        <h2>File a Complaint</h2>
+        <form id="fileComplaintForm">
+            <select id="complaintCategory" required style="width:100%; padding:15px; margin-bottom:15px; border-radius:12px; border:1px solid #ddd; outline:none; font-family:inherit;">
+                <option value="" disabled selected>Select Category</option>
+                <option value="Faulty Facilities">Faulty Facilities</option>
+                <option value="Lost and Found">Lost and Found</option>
+                <option value="Other">Other</option>
+            </select>
+            <textarea id="complaintSubject" placeholder="Describe your issue..." required style="width:100%; height:100px; padding:15px; margin-bottom:20px; border-radius:12px; border:1px solid #ddd; outline:none; font-family:inherit;"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn" style="background:#e5dbe5; color:var(--text-main)" onclick="document.getElementById('fileComplaintModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn" style="background:var(--accent-teal);" id="submitComplaintBtn">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="applyLeaveModal" class="modal">
+    <div class="modal-content">
+        <h2>Apply for Leave</h2>
+        <form id="applyLeaveForm">
+            <input type="date" id="leaveStartDate" required style="width:100%; padding:15px; margin-bottom:15px; border-radius:12px; border:1px solid #ddd; outline:none;">
+            <input type="date" id="leaveEndDate" required style="width:100%; padding:15px; margin-bottom:15px; border-radius:12px; border:1px solid #ddd; outline:none;">
+            <textarea id="leaveReason" placeholder="Reason for leave..." required style="width:100%; height:100px; padding:15px; margin-bottom:20px; border-radius:12px; border:1px solid #ddd; outline:none;"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn" style="background:#e5dbe5; color:var(--text-main)" onclick="document.getElementById('applyLeaveModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn" style="background:var(--accent-teal);" id="submitLeaveBtn">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="receiptModal" class="modal">
+    <div class="modal-content" style="font-family: monospace; background: #fff8f5;">
+        <div style="display:flex; justify-content:space-between; border-bottom: 1px dashed #d0c2d0; padding-bottom: 15px; margin-bottom: 20px;">
+            <div><h2>FEE RECEIPT</h2><p style="color:var(--text-muted); font-size:12px;">Date: <span id="receiptDate">--</span></p></div>
+            <i class="fas fa-check-circle" style="font-size:28px; color:var(--accent-teal);"></i>
+        </div>
+        <div style="margin-bottom: 20px; line-height: 1.8; color:var(--text-main);">
+            <p><strong>Student Name:</strong> <span id="recName">--</span></p>
+            <p><strong>Roll No:</strong> <span id="recRoll">--</span></p>
+            <p><strong>Course:</strong> <span id="recCourse">--</span></p>
+            <p><strong>Term Fee Amount:</strong> ₹ 45,000.00</p>
+            <p><strong>Payment Status:</strong> <span id="recStatus" style="font-weight:bold;">--</span></p>
+        </div>
+        <button class="btn" style="width:100%;" onclick="document.getElementById('receiptModal').style.display='none'">Close Receipt</button>
+    </div>
+</div>
+
+<script>
+    // Session Check
+    const studentToken = localStorage.getItem('student_token');
+    const studentSession = localStorage.getItem('student_session');
+    if (!studentToken || !studentSession) {
+        window.location.href = 'student.html';
+    }
+    const student = JSON.parse(studentSession);
+
+    // Helper for authorized fetch
+    async function authFetch(url, options = {}) {
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${studentToken}`,
+            'Content-Type': 'application/json'
+        };
+        const response = await fetch(url, { ...options, headers });
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('student_token');
+            localStorage.removeItem('student_session');
+            window.location.href = 'student.html';
+            return;
+        }
+        return response;
+    }
+
+    window.switchTab = function(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+        const tab = document.getElementById('tab-' + tabId);
+        if(tab) tab.style.display = 'block';
+        const navLink = document.getElementById('nav-' + tabId);
+        if(navLink) navLink.classList.add('active');
+
+        if(tabId === 'dashboard') loadDashboard();
+        if(tabId === 'complaints') loadComplaints();
+        if(tabId === 'leaves') loadLeaves();
+        if(tabId === 'fees') updateFeeUI();
+    };
+
+    window.updateFeeUI = function() {
+        const currentStatus = student.fee_status || "Pending";
+        const isPaid = currentStatus === 'Paid';
+        const toggle = document.getElementById('statusToggle');
+        if(toggle) toggle.checked = isPaid;
+
+        document.getElementById('feeDisplay').textContent = currentStatus;
+        const dashCheck = document.getElementById('dashboardFeeCheck');
+        if(dashCheck) {
+            dashCheck.textContent = currentStatus;
+            dashCheck.parentElement.classList.remove('pie-green', 'pie-red', 'pie-teal');
+            dashCheck.parentElement.classList.add(isPaid ? 'pie-green' : 'pie-red');
+        }
+
+        const statusCircle = document.getElementById('feeStatusCircle');
+        if(statusCircle) {
+            statusCircle.classList.remove('pie-green', 'pie-red', 'pie-teal');
+            statusCircle.classList.add(isPaid ? 'pie-green' : 'pie-red');
+        }
+
+        const recStatus = document.getElementById('recStatus');
+        if(recStatus) {
+            recStatus.textContent = currentStatus.toUpperCase();
+            recStatus.style.color = isPaid ? 'var(--accent-teal)' : 'var(--accent-pink)';
+        }
+    };
+
+    window.toggleFeeStatus = async function() {
+        const newStatus = student.fee_status === 'Paid' ? 'Pending' : 'Paid';
+        const btn = document.getElementById('statusToggle');
+        btn.disabled = true;
+        try {
+            const resp = await authFetch(`/api/admin/fees/${student.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ fee_status: newStatus })
+            });
+            if (resp && resp.ok) {
+                student.fee_status = newStatus;
+                localStorage.setItem('student_session', JSON.stringify(student));
+                updateFeeUI();
+            }
+        } catch (err) { console.error(err); }
+        btn.disabled = false;
+    };
+
+    const loadDashboard = async () => {
+        try {
+            const response = await authFetch(`/api/student/dashboard/${student.id}`);
+            if(!response) return;
+            const data = await response.json();
+            document.getElementById('complaintDisplay').textContent = data.active_complaints || 0;
+            document.getElementById('roomDisplay').textContent = student.room_id || "Unassigned";
+            document.getElementById('noticeCountDisplay').textContent = data.notices ? data.notices.length : 0;
+            const nContainer = document.getElementById('noticesContainer');
+            nContainer.innerHTML = '';
+            if(data.notices && data.notices.length > 0) {
+                data.notices.slice(0, 3).forEach(n => {
+                    nContainer.innerHTML += `<div class="notice-item"><div class="notice-icon"><i class="fas fa-exclamation-circle"></i></div><div class="notice-info"><h4>${n.date}</h4><p>${n.notice}</p></div></div>`;
+                });
+            } else nContainer.innerHTML = '<p style="padding:10px;">No new notices</p>';
+        } catch(e) { console.error(e); }
+    };
+
+    const loadComplaints = async () => {
+        try {
+            const resp = await authFetch(`/api/student/complaints/${student.id}`);
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('myComplaintsTableBody');
+            tbody.innerHTML = '';
+            if(data.complaints && data.complaints.length > 0) {
+                data.complaints.forEach(c => {
+                    const badge = `<span style="padding:4px 8px; border-radius:6px; font-size:12px; color:white; background:${c.status === 'Completed' ? 'var(--accent-teal)' : 'var(--accent-yellow)'}">${c.status}</span>`;
+                    tbody.innerHTML += `<tr><td>#${c.id}</td><td>${c.category || 'Other'}</td><td>${c.title}</td><td>${badge}</td></tr>`;
+                });
+            } else tbody.innerHTML = '<tr><td colspan="4">No records found.</td></tr>';
+        } catch(e) { console.error(e); }
+    };
+
+    const loadLeaves = async () => {
+        try {
+            const resp = await authFetch(`/api/student/leave/${student.id}`);
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('myLeavesTableBody');
+            tbody.innerHTML = '';
+            if(data.leaves && data.leaves.length > 0) {
+                data.leaves.forEach(l => {
+                    const color = l.status === 'Approved' ? 'var(--accent-teal)' : (l.status === 'Rejected' ? 'var(--accent-pink)' : 'var(--accent-yellow)');
+                    tbody.innerHTML += `<tr><td>${l.start_date}</td><td>${l.end_date}</td><td>${l.reason}</td><td><span style="padding:4px 8px; border-radius:6px; font-size:12px; color:white; background:${color}">${l.status}</span></td></tr>`;
+                });
+            } else tbody.innerHTML = '<tr><td colspan="4">No leave history.</td></tr>';
+        } catch(e) { console.error(e); }
+    };
+
+    // Form Submissions
+    document.getElementById('fileComplaintForm').onsubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await authFetch('/api/complaints', { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    student_id: student.id, 
+                    title: document.getElementById('complaintSubject').value, 
+                    category: document.getElementById('complaintCategory').value 
+                }) 
+            });
+            document.getElementById('fileComplaintModal').style.display = 'none';
+            loadComplaints(); loadDashboard(); e.target.reset();
+        } catch(e) { console.error(e); }
+    };
+
+    document.getElementById('applyLeaveForm').onsubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await authFetch('/api/student/leave', { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    student_id: student.id, 
+                    start_date: document.getElementById('leaveStartDate').value, 
+                    end_date: document.getElementById('leaveEndDate').value, 
+                    reason: document.getElementById('leaveReason').value 
+                }) 
+            });
+            document.getElementById('applyLeaveModal').style.display = 'none';
+            loadLeaves(); e.target.reset();
+        } catch(e) { console.error(e); }
+    };
+
+    // Initial Setup
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById('studentNameDisplay').textContent = student.name;
+        document.getElementById('greetingText').textContent = "HELLO, " + student.name.split(' ')[0].toUpperCase() + "!";
+        
+        // Receipt
+        document.getElementById('receiptDate').textContent = new Date().toLocaleDateString();
+        document.getElementById('recName').textContent = student.name;
+        document.getElementById('recRoll').textContent = student.roll_no;
+        document.getElementById('recCourse').textContent = student.course || 'N/A';
+
+        updateFeeUI();
+        loadDashboard();
+        loadComplaints();
+        loadLeaves();
+    });
+</script>
+</body>
+</html>
