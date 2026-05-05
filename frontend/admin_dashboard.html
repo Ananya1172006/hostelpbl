@@ -649,267 +649,440 @@ tr {
 </div>
 
 <script>
-const adminToken = localStorage.getItem('admin_token');
-const adminSession = localStorage.getItem('admin_session');
-
-if (!adminToken || !adminSession) {
-    window.location.href = 'admin.html';
-}
-
-async function authFetch(url, options = {}) {
-    const headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${adminToken}`,
-        'Content-Type': 'application/json'
-    };
-
-    const response = await fetch(url, { ...options, headers });
-
-    if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_session');
+    // --- Session & Security ---
+    const adminToken = localStorage.getItem('admin_token');
+    const adminSessionStr = localStorage.getItem('admin_session');
+    
+    if (!adminToken || !adminSessionStr) {
         window.location.href = 'admin.html';
-        return;
     }
 
-    return response;
-}
+    const adminSession = JSON.parse(adminSessionStr);
 
-window.switchTab = function(tabId) {
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
-
-    document.getElementById('tab-' + tabId).style.display = 'block';
-    document.getElementById('nav-' + tabId).classList.add('active');
-
-    if (tabId === 'dashboard') loadDashboardStats();
-    if (tabId === 'students') loadStudents();
-    if (tabId === 'complaints') loadComplaints();
-    if (tabId === 'attendance') loadAttendance();
-    if (tabId === 'payments') loadStudents();
-    if (tabId === 'leaves') loadLeaves();
-    if (tabId === 'notices') loadNotices();
-    if (tabId === 'rooms') loadRooms();
-};
-
-async function loadDashboardStats() {
-    try {
-        const resp = await authFetch('/api/admin/dashboard');
-        if (!resp) return;
-        const data = await resp.json();
-
-        document.getElementById('totalStudentsDisplay').textContent = data.total_students || 0;
-        document.getElementById('occupiedRoomsDisplay').textContent = data.occupied_rooms || 0;
-        document.getElementById('activeComplaintsDisplay').textContent = data.active_complaints || 0;
-        document.getElementById('unpaidFeesDisplay').textContent = data.unpaid_fees || 0;
-    } catch (e) { console.error(e); }
-}
-
-async function loadStudents() {
-    try {
-        const resp = await authFetch('/api/admin/students');
-        if (!resp) return;
-        const data = await resp.json();
-
-        const tbody = document.getElementById('recentStudentsTableBody');
-        const payTbody = document.getElementById('paymentsTableBody');
-
-        tbody.innerHTML = '';
-        payTbody.innerHTML = '';
-
-        if (data.students && data.students.length > 0) {
-            data.students.forEach(s => {
-                const tr = document.createElement('tr');
-
-                tr.innerHTML = `
-                    <td>${s.name}</td>
-                    <td>${s.room_id || 'N/A'}</td>
-                    <td>${s.course}</td>
-                    <td>${s.status}</td>
-                    <td>
-                        <button class="btn" onclick='openEditModal(${JSON.stringify(s)})'>Edit</button>
-                        <button class="btn" onclick="deleteStudent(${s.id})">Del</button>
-                    </td>
-                `;
-
-                tbody.appendChild(tr);
-
-                const payTr = document.createElement('tr');
-                payTr.innerHTML = `
-                    <td>${s.name}</td>
-                    <td>${s.roll_no}</td>
-                    <td>${s.room_id || 'N/A'}</td>
-                    <td>${s.fee_status || 'Pending'}</td>
-                `;
-                payTbody.appendChild(payTr);
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="5">No students found</td></tr>';
-            payTbody.innerHTML = '<tr><td colspan="4">No students found</td></tr>';
+    // Helper for authorized fetch
+    async function authFetch(url, options = {}) {
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json'
+        };
+        try {
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401 || response.status === 403) {
+                console.error('Session expired or unauthorized');
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('admin_session');
+                window.location.href = 'admin.html';
+                return;
+            }
+            return response;
+        } catch (err) {
+            console.error('Fetch error:', err);
+            throw err;
         }
-    } catch (e) { console.error(e); }
-}
+    }
 
-async function loadComplaints() {
-    try {
-        const resp = await authFetch('/api/admin/complaints');
-        if (!resp) return;
-        const data = await resp.json();
+    // --- Tab Switching ---
+    window.switchTab = function(tabId) {
+        // Update UI
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+        
+        const tab = document.getElementById('tab-' + tabId);
+        if(tab) tab.style.display = 'block';
+        
+        const navLink = document.getElementById('nav-' + tabId);
+        if(navLink) navLink.classList.add('active');
 
-        const tbody = document.getElementById('complaintsTableBody');
-        tbody.innerHTML = '';
-
-        if (data.complaints) {
-            data.complaints.forEach(c => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${c.student_name}</td>
-                    <td>${c.room_id || 'N/A'}</td>
-                    <td>${c.category}</td>
-                    <td>${c.title}</td>
-                    <td>${c.status}</td>
-                    <td>
-                        <button onclick="resolveComplaint(${c.id})">Resolve</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+        // Load data for the tab
+        switch(tabId) {
+            case 'dashboard': loadDashboardStats(); break;
+            case 'students': loadStudents(); break;
+            case 'complaints': loadComplaints(); break;
+            case 'attendance': loadAttendance(); break;
+            case 'payments': loadStudents(); break; // Payments uses student data
+            case 'leaves': loadLeaves(); break;
+            case 'notices': loadNotices(); break;
+            case 'rooms': loadRooms(); break;
         }
-    } catch (e) { console.error(e); }
-}
+    };
 
-async function loadAttendance() {
-    const date = document.getElementById('attendanceDate').value || new Date().toISOString().split('T')[0];
+    // --- Data Loading Functions ---
 
-    try {
-        const resp = await authFetch('/api/admin/attendance?date=' + date);
-        if (!resp) return;
+    async function loadDashboardStats() {
+        try {
+            const resp = await authFetch('/api/admin/dashboard');
+            if(!resp) return;
+            const data = await resp.json();
+            document.getElementById('totalStudentsDisplay').textContent = data.total_students || 0;
+            document.getElementById('occupiedRoomsDisplay').textContent = data.occupied_rooms || 0;
+            document.getElementById('activeComplaintsDisplay').textContent = data.active_complaints || 0;
+            document.getElementById('unpaidFeesDisplay').textContent = data.unpaid_fees || 0;
+        } catch(e) { console.error(e); }
+    }
 
-        const data = await resp.json();
-        const tbody = document.getElementById('attendanceTableBody');
-        tbody.innerHTML = '';
+    async function loadStudents() {
+        try {
+            const resp = await authFetch('/api/admin/students');
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('recentStudentsTableBody');
+            const payTbody = document.getElementById('paymentsTableBody');
+            
+            if(!tbody || !payTbody) return;
+            
+            tbody.innerHTML = '';
+            payTbody.innerHTML = '';
+            
+            if(data.students && data.students.length > 0) {
+                data.students.forEach(s => {
+                    // Students Table
+                    const tr = document.createElement('tr');
+                    const badge = `<span style="padding:4px 8px; border-radius:4px; font-size:12px; background:${s.status==='Active' ? '#dcfce7' : '#fef3c7'}; color:${s.status==='Active' ? '#166534' : '#92400e'}">${s.status}</span>`;
+                    tr.innerHTML = `
+                        <td>${s.name}</td>
+                        <td>${s.room_id || 'N/A'}</td>
+                        <td>${s.course}</td>
+                        <td>${badge}</td>
+                        <td>
+                            <button class="btn" style="background:#3b82f6; padding:5px 10px; font-size:12px;" onclick='openEditModal(${JSON.stringify(s)})'>Edit</button>
+                            <button class="btn" style="background:#ef4444; padding:5px 10px; font-size:12px;" onclick="deleteStudent(${s.id})">Del</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
 
-        if (data.attendance) {
-            data.attendance.forEach(a => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${a.name}</td>
-                    <td>${a.roll_no}</td>
-                    <td>${a.room_id}</td>
-                    <td>${a.status}</td>
-                    <td>
-                        <select onchange="markAttendance(${a.id}, this.value)">
-                            <option value="Present">Present</option>
-                            <option value="Absent">Absent</option>
-                        </select>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+                    // Payments Table
+                    const payTr = document.createElement('tr');
+                    const feeBadge = `<span style="padding:4px 8px; border-radius:4px; font-size:12px; background:${s.fee_status==='Paid' ? '#dcfce7' : '#fee2e2'}; color:${s.fee_status==='Paid' ? '#166534' : '#991b1b'}">${s.fee_status || 'Pending'}</span>`;
+                    payTr.innerHTML = `
+                        <td>${s.name}</td>
+                        <td>${s.roll_no}</td>
+                        <td>${s.room_id || 'N/A'}</td>
+                        <td>${feeBadge}</td>
+                    `;
+                    payTbody.appendChild(payTr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5">No students found</td></tr>';
+                payTbody.innerHTML = '<tr><td colspan="4">No students found</td></tr>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadComplaints() {
+        try {
+            const resp = await authFetch('/api/admin/complaints');
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('complaintsTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(data.complaints && data.complaints.length > 0) {
+                data.complaints.forEach(c => {
+                    const tr = document.createElement('tr');
+                    const isResolved = c.status === 'Completed';
+                    const badge = `<span style="padding:4px 8px; border-radius:4px; font-size:12px; background:${isResolved ? '#dcfce7' : '#fef3c7'}; color:${isResolved ? '#166534' : '#92400e'}">${c.status}</span>`;
+                    tr.innerHTML = `
+                        <td>${c.student_name}</td>
+                        <td>${c.room_id || 'N/A'}</td>
+                        <td>${c.category || 'Other'}</td>
+                        <td>${c.title}</td>
+                        <td>${badge}</td>
+                        <td>
+                            ${!isResolved ? `<button class="btn" style="background:#10b981; padding:5px 10px; font-size:12px;" onclick="resolveComplaint(${c.id})">Resolve</button>` : 'Resolved'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6">No complaints found</td></tr>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadAttendance() {
+        const dateInput = document.getElementById('attendanceDate');
+        if(!dateInput) return;
+        if(!dateInput.value) dateInput.valueAsDate = new Date();
+        const date = dateInput.value;
+        try {
+            const resp = await authFetch('/api/admin/attendance?date=' + date);
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('attendanceTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(data.attendance && data.attendance.length > 0) {
+                data.attendance.forEach(a => {
+                    const tr = document.createElement('tr');
+                    const badge = `<span style="padding:4px 8px; border-radius:4px; font-size:12px; background:${a.status==='Present' ? '#dcfce7' : '#fee2e2'}; color:${a.status==='Present' ? '#166534' : '#991b1b'}">${a.status || 'Not Marked'}</span>`;
+                    tr.innerHTML = `
+                        <td>${a.name}</td>
+                        <td>${a.roll_no}</td>
+                        <td>${a.room_id || 'N/A'}</td>
+                        <td>${badge}</td>
+                        <td>
+                            <button class="btn" style="background:#10b981; padding:5px 10px; font-size:12px;" onclick="markAttendance(${a.id}, 'Present')">Present</button>
+                            <button class="btn" style="background:#ef4444; padding:5px 10px; font-size:12px;" onclick="markAttendance(${a.id}, 'Absent')">Absent</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5">No active students found</td></tr>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function markAttendance(studentId, status) {
+        const date = document.getElementById('attendanceDate').value;
+        try {
+            const resp = await authFetch('/api/admin/attendance', {
+                method: 'POST',
+                body: JSON.stringify({ date, student_id: studentId, status })
             });
+            if(resp && resp.ok) loadAttendance();
+            else alert('Failed to mark attendance');
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadLeaves() {
+        try {
+            const resp = await authFetch('/api/admin/leave');
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('leavesTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(data.leaves && data.leaves.length > 0) {
+                data.leaves.forEach(l => {
+                    const tr = document.createElement('tr');
+                    const badge = `<span style="padding:4px 8px; border-radius:4px; font-size:12px; background:${l.status==='Approved' ? '#dcfce7' : (l.status==='Rejected' ? '#fee2e2' : '#fef3c7')}; color:${l.status==='Approved' ? '#166534' : (l.status==='Rejected' ? '#991b1b' : '#92400e')}">${l.status}</span>`;
+                    tr.innerHTML = `
+                        <td>${l.student_name}</td>
+                        <td>${l.roll_no}</td>
+                        <td>${l.reason}</td>
+                        <td>${l.start_date} - ${l.end_date}</td>
+                        <td>${badge}</td>
+                        <td>
+                            ${l.status === 'Pending' ? `
+                                <button class="btn" style="background:#10b981; padding:5px 10px; font-size:12px;" onclick="updateLeave(${l.id}, 'Approved')">Approve</button>
+                                <button class="btn" style="background:#ef4444; padding:5px 10px; font-size:12px;" onclick="updateLeave(${l.id}, 'Rejected')">Reject</button>
+                            ` : 'Processed'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6">No leave requests found</td></tr>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function updateLeave(id, status) {
+        try {
+            const resp = await authFetch(`/api/admin/leave/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status })
+            });
+            if(resp && resp.ok) loadLeaves();
+            else alert('Failed to update leave status');
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadNotices() {
+        try {
+            const resp = await authFetch('/api/admin/notices');
+            if(!resp) return;
+            const data = await resp.json();
+            const tbody = document.getElementById('noticesTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(data.notices && data.notices.length > 0) {
+                data.notices.forEach(n => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${n.date}</td>
+                        <td>${n.notice}</td>
+                        <td><button class="btn" style="background:#ef4444; padding:5px 10px; font-size:12px;" onclick="deleteNotice(${n.id})">Delete</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3">No notices found</td></tr>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function deleteNotice(id) {
+        if(!confirm('Delete this notice?')) return;
+        try {
+            const resp = await authFetch(`/api/admin/notices/${id}`, { method: 'DELETE' });
+            if(resp && resp.ok) loadNotices();
+            else alert('Failed to delete notice');
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadRooms() {
+        try {
+            const resp = await authFetch('/api/admin/rooms-availability');
+            if(!resp) return;
+            const data = await resp.json();
+            const container = document.getElementById('roomsGridContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            if(data.rooms && data.rooms.length > 0) {
+                data.rooms.forEach(r => {
+                    const occupants = r.occupants || 0;
+                    const capacity = 2; // Fixed capacity
+                    let statusText = 'Available';
+                    let cls = 'r-green';
+                    if(occupants >= capacity) { cls = 'r-red'; statusText = 'Full'; }
+                    else if(occupants > 0) { cls = 'r-yellow'; statusText = 'Half Full'; }
+                    
+                    container.innerHTML += `
+                        <div class="room-box ${cls}">
+                            <h4 style="margin-bottom:8px;">#${r.room_id}</h4>
+                            <p style="font-size:18px; font-weight:700; margin-bottom:4px;">${occupants}/${capacity}</p>
+                            <p style="font-size:10px; opacity:0.8; text-transform:uppercase; letter-spacing:1px;">${statusText}</p>
+                        </div>`;
+                });
+            } else {
+                container.innerHTML = '<p>No room data found</p>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    // --- Modal Helpers ---
+    window.openEditModal = function(student) {
+        document.getElementById('editSId').value = student.id;
+        document.getElementById('editSName').value = student.name;
+        document.getElementById('editSRoll').value = student.roll_no;
+        document.getElementById('editSUser').value = student.username;
+        document.getElementById('editSRoom').value = student.room_id || '';
+        document.getElementById('editSCourse').value = student.course || '';
+        document.getElementById('editSFee').value = student.fee_status || 'Pending';
+        document.getElementById('editStudentModal').style.display = 'flex';
+    };
+
+    window.deleteStudent = async function(id) {
+        if(!confirm('Are you sure you want to delete this student?')) return;
+        try {
+            const resp = await authFetch(`/api/admin/students/${id}`, { method: 'DELETE' });
+            if(resp && resp.ok) loadStudents();
+            else alert('Error deleting student');
+        } catch(e) { console.error(e); }
+    };
+
+    window.resolveComplaint = async function(id) {
+        try {
+            const resp = await authFetch(`/api/admin/complaints/${id}`, {
+                method: 'PATCH', body: JSON.stringify({status: 'Completed'})
+            });
+            if(resp && resp.ok) loadComplaints();
+            else alert('Error updating complaint');
+        } catch(e) { console.error(e); }
+    };
+
+    // --- Form Submissions ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial data load
+        loadDashboardStats();
+
+        // Add Student Form
+        const addStudentForm = document.getElementById('addStudentForm');
+        if(addStudentForm) {
+            addStudentForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('saveStudentBtn');
+                btn.textContent = 'Saving...'; btn.disabled = true;
+
+                const payload = {
+                    name: document.getElementById('newSName').value,
+                    roll_no: document.getElementById('newSRoll').value,
+                    username: document.getElementById('newSUser').value,
+                    password: document.getElementById('newSPass').value,
+                    room_id: document.getElementById('newSRoom').value || null,
+                    course: document.getElementById('newSCourse').value || null
+                };
+
+                try {
+                    const resp = await authFetch('/api/admin/students', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    const res = await resp.json();
+                    if(res.success) {
+                        alert('Student added successfully!');
+                        document.getElementById('addStudentModal').style.display = 'none';
+                        addStudentForm.reset();
+                        loadStudents();
+                    } else alert(res.error || 'Failed to add student');
+                } catch(e) { console.error(e); }
+                btn.textContent = 'Save'; btn.disabled = false;
+            };
         }
-    } catch (e) { console.error(e); }
-}
 
-async function markAttendance(id, status) {
-    const date = document.getElementById('attendanceDate').value;
+        // Edit Student Form
+        const editStudentForm = document.getElementById('editStudentForm');
+        if(editStudentForm) {
+            editStudentForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('editSId').value;
+                const payload = {
+                    name: document.getElementById('editSName').value,
+                    roll_no: document.getElementById('editSRoll').value,
+                    username: document.getElementById('editSUser').value,
+                    room_id: document.getElementById('editSRoom').value || null,
+                    course: document.getElementById('editSCourse').value || null,
+                    fee_status: document.getElementById('editSFee').value
+                };
 
-    await authFetch('/api/admin/attendance', {
-        method: 'POST',
-        body: JSON.stringify({ date, student_id: id, status })
+                try {
+                    const resp = await authFetch(`/api/admin/students/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+                    if(resp && resp.ok) {
+                        alert('Student updated successfully!');
+                        document.getElementById('editStudentModal').style.display = 'none';
+                        loadStudents();
+                    } else {
+                        const err = await resp.json();
+                        alert(err.error || 'Failed to update student');
+                    }
+                } catch(e) { console.error(e); }
+            };
+        }
+
+        // Add Notice Form
+        const addNoticeForm = document.getElementById('addNoticeForm');
+        if(addNoticeForm) {
+            addNoticeForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('saveNoticeBtn');
+                btn.disabled = true; btn.textContent = 'Publishing...';
+                try {
+                    const resp = await authFetch('/api/admin/notices', {
+                        method: 'POST',
+                        body: JSON.stringify({ 
+                            date: document.getElementById('newNoticeDate').value, 
+                            notice: document.getElementById('newNoticeText').value 
+                        })
+                    });
+                    if(resp && resp.ok) {
+                        alert('Notice published!');
+                        document.getElementById('addNoticeModal').style.display = 'none';
+                        addNoticeForm.reset();
+                        loadNotices();
+                    } else alert('Error adding notice');
+                } catch(e) { console.error(e); }
+                btn.disabled = false; btn.textContent = 'Publish';
+            };
+        }
     });
-
-    loadAttendance();
-}
-
-async function loadLeaves() {
-    try {
-        const resp = await authFetch('/api/admin/leave');
-        if (!resp) return;
-
-        const data = await resp.json();
-        const tbody = document.getElementById('leavesTableBody');
-        tbody.innerHTML = '';
-
-        data.leaves.forEach(l => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${l.student_name}</td>
-                <td>${l.roll_no}</td>
-                <td>${l.reason}</td>
-                <td>${l.start_date} - ${l.end_date}</td>
-                <td>${l.status}</td>
-                <td>
-                    <button onclick="updateLeave(${l.id}, 'Approved')">Approve</button>
-                    <button onclick="updateLeave(${l.id}, 'Rejected')">Reject</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (e) { console.error(e); }
-}
-
-async function updateLeave(id, status) {
-    await authFetch(`/api/admin/leave/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-    });
-    loadLeaves();
-}
-
-async function loadNotices() {
-    try {
-        const resp = await authFetch('/api/admin/notices');
-        if (!resp) return;
-
-        const data = await resp.json();
-        const tbody = document.getElementById('noticesTableBody');
-        tbody.innerHTML = '';
-
-        data.notices.forEach(n => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${n.date}</td>
-                <td>${n.notice}</td>
-                <td><button onclick="deleteNotice(${n.id})">Delete</button></td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (e) { console.error(e); }
-}
-
-async function deleteNotice(id) {
-    await authFetch(`/api/admin/notices/${id}`, { method: 'DELETE' });
-    loadNotices();
-}
-
-async function loadRooms() {
-    try {
-        const resp = await authFetch('/api/admin/rooms-availability');
-        if (!resp) return;
-
-        const data = await resp.json();
-        const container = document.getElementById('roomsGridContainer');
-        container.innerHTML = '';
-
-        data.rooms.forEach(r => {
-            let cls = 'r-green';
-            if (r.occupants >= r.capacity) cls = 'r-red';
-            else if (r.occupants > 0) cls = 'r-yellow';
-
-            container.innerHTML += `
-                <div class="room-box ${cls}">
-                    <h4>Room ${r.room_id}</h4>
-                    <p>${r.occupants}/${r.capacity}</p>
-                </div>
-            `;
-        });
-    } catch (e) { console.error(e); }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadDashboardStats();
-});
 </script>
+
 
 </body>
 </html>
